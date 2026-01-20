@@ -469,8 +469,8 @@ const MemberSelectionFields = () => {
 
   // Handle selection (When user clicks an item)
   const handleSelect = (member: MemberResult) => {
-    form.setValue("memberId", member.id);
-    setInputValue(member.name); // Show name in box after selection
+    form.setValue("memberId", member.biometricId);
+    setInputValue(member.fullName); // Show name in box after selection
     setOpen(false);
   };
 
@@ -496,7 +496,7 @@ const MemberSelectionFields = () => {
                 >
                   {/* Logic to show selected member name if ID exists */}
                   {field.value
-                    ? (searchResults.find(m => m.id === field.value)?.name || field.value)
+                    ? (searchResults.find(m => m.biometricId === field.value)?.fullName || field.value)
                     : "Search by Name, Email or ID..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -526,22 +526,22 @@ const MemberSelectionFields = () => {
                     <CommandGroup>
                       {searchResults.map((member) => (
                         <CommandItem
-                          key={member.id}
-                          value={member.id} // value matches key for selection
+                          key={member.biometricId}
+                          value={member.biometricId.toString()} // value matches key for selection
                           onSelect={() => handleSelect(member)}
                         >
                           <Check
                             className={cn(
                               "mr-2 h-4 w-4",
-                              field.value === member.id
+                              field.value === member.biometricId
                                 ? "opacity-100"
                                 : "opacity-0"
                             )}
                           />
                           <div className="flex flex-col">
-                            <span className="font-medium">{member.name}</span>
+                            <span className="font-medium">{member.fullName}</span>
                             <span className="text-xs text-muted-foreground">
-                              ID: {member.id} • {member.email}
+                              ID: {member.biometricId} • {member.email}
                             </span>
                           </div>
                         </CommandItem>

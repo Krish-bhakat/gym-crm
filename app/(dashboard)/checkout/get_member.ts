@@ -7,9 +7,9 @@ import { db } from "@/lib/db";
 
 
 export type MemberResult = {
-  id: string;
-  name: string;
-  email: string;
+  biometricId: string | null ;
+  fullName: string;
+  email: string | null;
 };
 
 export async function searchMembers(query: string): Promise<MemberResult[]> {
@@ -30,7 +30,7 @@ export async function searchMembers(query: string): Promise<MemberResult[]> {
         ],
       },
       take: 5, // Limit results for performance
-      select: { id: true, fullName: true, email: true }
+      select: { biometricId: true, fullName: true, email: true }
     });
     return members;
     
