@@ -1,0 +1,30 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.ts",
+    "css": "app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true
+  },
+  "iconLibrary": "radix",
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui"
+  },
+  "registries": {
+    "@shadcnstore": {
+      "url": "https://shadcnstore.com/r/{name}.json"
+    },
+    "@shadcnstore-pro": {
+      "url": "https://shadcnstore.com/r/{name}.json?token=${SHADCNSTORE_TOKEN}",
+      "headers": {
+        "Authorization": "Bearer ${SHADCNSTORE_TOKEN}"
+      }
+    },
+    "@shadcnblocks": "https://shadcnblocks.com/r/{name}.json"
+  }
+}

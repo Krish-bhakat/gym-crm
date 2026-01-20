@@ -1,0 +1,8 @@
+{
+    "crons": [
+      {
+        "path": "/api/cron/process-reminders?key=YOUR_SECRET_KEY_HERE",
+        "schedule": "30 4 * * *"
+      }
+    ]
+  }

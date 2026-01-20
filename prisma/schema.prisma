@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // <--- Ensure this line is here
+}
+
+// ---------------------------------------------------------
+// 2. Authentication & Gym Management (Multi-Tenancy)
+// ---------------------------------------------------------
+
+model Gym {
+  id          Int   @id @default(autoincrement())
+  name        String
+  slug        String   // e.g. "iron-gym-delhi"
+  address     String?
+  phoneNumber String?
+  
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  users       User[]       // Staff & Admins
+  members     Member[]     // Gym Clients
+  plans       Plan[]
+  staff       Staff[]
+  products    Product[]    // Inventory
+  invoices    Invoice[]    // Sales Records
+  biometricdevice   BiometricDevice[]
+  twilioSettings  TwilioSettings?
+}
+
+model User {
+  id            Int    @id @default(autoincrement())
+  name          String?
+  email         String    @unique
+  password      String    // Hashed Password
+  role          Role      @default(ADMIN)
+  
+  gymId         Int
+  gym           Gym       @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+
+model Plan {
+  id          Int      @id @default(autoincrement())
+  name        String   // e.g. "Gold Monthly"
+  price       Int  // e.g. 1000
+  duration    Int      // Duration in DAYS (e.g. 30, 365)
+  
+  gymId       Int
+  gym         Gym      @relation(fields: [gymId], references: [id])
+
+  members     Member[]
+  
+  createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------
+// 3. Client Management & Biometrics
+// ---------------------------------------------------------
+
+model Member {
+  id            Int    @id @default(autoincrement())
+  fullName      String
+  email         String?
+  whatsapp      String    // Critical for sending bills
+  gender        Gender?
+  photoUrl      String?   // Displayed on dashboard during scan
+  dob           DateTime?
+  // Biometric Link
+  biometricId   String?   @unique // The ID sent by your fingerprint scanner (e.g., "105")
+  
+  // Membership Status
+  status        MemberStatus @default(ACTIVE)
+  planName      String?      // e.g. "Gold Plan"
+  startDate     DateTime     @default(now())
+  endDate       DateTime     // The system checks this date for access
+  
+  gymId         Int
+  gym           Gym       @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  planId        Int?     // Foreign Key
+  plan          Plan?    @relation(fields: [planId], references: [id])
+  // Logs
+  attendance    Attendance[]
+  invoices      Invoice[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Attendance {
+  id        Int   @id @default(autoincrement())
+  checkIn   DateTime @default(now())
+  checkOut  DateTime?
+  status    String   // "Allowed", "Denied - Expired", "Late"
+  
+  memberId  Int
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  // No gymId needed here as it's linked through Member, but could be added for speed
+}
+
+// ---------------------------------------------------------
+// 4. Supplement Shop & Inventory
+// ---------------------------------------------------------
+
+model Product {
+  id            Int   @id @default(autoincrement())
+  name          String
+  category      String?  // "Proteins", "Gear", "Vitamins"
+  description   String?
+  
+  price         Decimal  @default(0.00) // Using Decimal for money precision
+  stock         Int      @default(0)
+  minStockAlert Int      @default(5)    // Triggers dashboard alert if stock < 5
+  
+  gymId         Int
+  gym           Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  
+  invoiceItems  InvoiceItem[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ---------------------------------------------------------
+// 5. Billing & Invoicing (E-Invoice)
+// ---------------------------------------------------------
+
+model Invoice {
+  id          Int        @id @default(autoincrement())
+  invoiceNo   String        @default(cuid()) // Shorter, friendly ID for the PDF
+  totalAmount Decimal
+  status      PaymentStatus @default(PAID)
+  type        InvoiceType   // MEMBERSHIP or PRODUCT
+  paymentMode String?       // "Cash", "UPI", "Card"
+  
+  memberId    Int?       // Optional: Walk-ins might buy water without being members
+  member      Member?       @relation(fields: [memberId], references: [id])
+  
+  gymId       Int
+  gym         Gym           @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  
+  items       InvoiceItem[]
+  
+  createdAt   DateTime      @default(now())
+}
+
+// The individual lines on a bill (e.g., 1x Whey Protein, 2x BCAA)
+model InvoiceItem {
+  id        Int  @id @default(autoincrement())
+  quantity  Int
+  price     Decimal // Snapshot of price at time of sale
+  
+  productId Int? // Optional: Could be a custom item like "One Day Pass"
+  product   Product? @relation(fields: [productId], references: [id])
+  
+  invoiceId Int
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model BiometricDevice {
+  id          String   @id @default(uuid()) // Unique Device Key (UUID is safer)
+  name        String   // e.g. "Front Door Scanner"
+  serialNo    String?  // Optional hardware serial
+  isActive    Boolean  @default(true)
+  
+  gymId       Int
+  gym         Gym      @relation(fields: [gymId], references: [id])
+
+  createdAt   DateTime @default(now())
+}
+
+model TwilioSettings {
+  id             Int     @id @default(autoincrement())
+  
+  gymId          Int     @unique
+  gym            Gym     @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  // Credentials (Moved here)
+  accountSid     String
+  authToken      String
+  phoneNumber    String
+
+  // Automation Logic (New features)
+  enableWelcome  Boolean @default(false)
+  welcomeTemplate String @default("Welcome to {gym_name}! Your membership is now active.")
+  
+  // 2. Birthday Wish (New)
+  enableBirthday   Boolean @default(false)
+  birthdayTemplate String  @default("Happy Birthday {member_name}! Have a great day from {gym_name}.")
+
+  // 3. Payment Reminder (New)
+  enableRenewal    Boolean @default(false)
+  renewalDaysBefore Int    @default(3) // Send 3 days before expiry
+  renewalTemplate  String  @default("Hi {member_name}, your plan at {gym_name} expires in 3 days. Please renew!")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// Add this to schema.prisma
+
+model Staff {
+  id          Int      @id @default(autoincrement())
+  fullName    String
+  role        String   // "Trainer", "Housekeeping", "Guard"
+  biometricId String?  @unique // The ID on the machine (e.g. "505")
+  phoneNumber String?
+  gymId       Int
+  gym         Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  
+  attendance  StaffAttendance[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model StaffAttendance {
+  id        Int      @id @default(autoincrement())
+  checkIn   DateTime @default(now())
+  checkOut  DateTime?
+  
+  staffId   Int
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+}
+
+// ---------------------------------------------------------
+// 6. Enums (Dropdown Options)
+// ---------------------------------------------------------
+
+enum Role {
+  ADMIN
+  TRAINER
+  RECEPTION
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  PARTIAL
+  OVERDUE
+}
+
+enum InvoiceType {
+  MEMBERSHIP
+  PRODUCT
+  SERVICE // Personal Training
+}
