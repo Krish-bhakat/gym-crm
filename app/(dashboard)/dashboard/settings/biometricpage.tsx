@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -22,9 +22,16 @@ export function BiometricSettings({ devices }: BiometricSettingsProps) {
   
   // 1. Determine the Base Domain
   // ESSL machines often need just the domain if they append /iclock/cdata automatically
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://your-app.com";
-  const fullUrl = `${appUrl}/api/biometric/check-in`;
+  const [origin, setOrigin] = useState("https://loading...");
 
+  // 2. EFFECT: Get the REAL browser URL (localhost or gymerm.netlify.app)
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  // 3. Construct the full API path
+  const fullUrl = `${origin}/api/biometric/check-in`;
+  
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("URL copied to clipboard");
@@ -80,9 +87,9 @@ export function BiometricSettings({ devices }: BiometricSettingsProps) {
                     </span>
                     <div className="flex items-center gap-2">
                         <code className="flex-1 p-3 bg-slate-900 rounded border border-slate-800 font-mono text-sm break-all text-purple-300">
-                            {appUrl}
+                            {fullUrl}
                         </code>
-                        <Button variant="outline" size="icon" className="border-slate-700 hover:bg-slate-800 hover:text-white" onClick={() => copyToClipboard(appUrl)}>
+                        <Button variant="outline" size="icon" className="border-slate-700 hover:bg-slate-800 hover:text-white" onClick={() => copyToClipboard(fullUrl)}>
                             <Copy className="h-4 w-4" />
                         </Button>
                     </div>
