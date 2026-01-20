@@ -527,7 +527,7 @@ const MemberSelectionFields = () => {
                       {searchResults.map((member) => (
                         <CommandItem
                           key={member.biometricId}
-                          value={member.biometricId.toString()} // value matches key for selection
+                          value={String(member.biometricId)} // value matches key for selection
                           onSelect={() => handleSelect(member)}
                         >
                           <Check
