@@ -42,9 +42,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // 3. CRITICAL: Return the fields needed for Multi-tenancy
         // If you don't return gymId here, it won't be available in the JWT
         return { 
-          id: user.id, 
+          id: String(user.id), 
           email: user.email,
-          gymId: user.gymId, // Restored
+          gymId: String(user.gymId), // Restored
           role: user.role    // Restored
         }
       },
