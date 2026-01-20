@@ -25,12 +25,12 @@ export async function searchMembers(query: string): Promise<MemberResult[]> {
       where: {
         OR: [
           { fullName: { contains: query, mode: 'insensitive' } },
-          { id: { contains: query, mode: 'insensitive' } },
+          { biometricId: { contains: query, mode: 'insensitive' } },
           { email: { contains: query, mode: 'insensitive' } },
         ],
       },
       take: 5, // Limit results for performance
-      select: { id: true, name: true, email: true }
+      select: { id: true, fullName: true, email: true }
     });
     return members;
     
