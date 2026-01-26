@@ -197,17 +197,6 @@ export function DataManagement() {
           </CardContent>
         </Card>
 
-        {/* System Health */}
-        <Card className="shadow-sm bg-slate-50/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            <Activity className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-700">Healthy</div>
-            <p className="text-xs text-muted-foreground">All systems operational</p>
-          </CardContent>
-        </Card>
       </div>
 
 
@@ -233,7 +222,7 @@ export function DataManagement() {
                   Upload a CSV file to add multiple members, plans, and dates at once.
                 </CardDescription>
               </CardHeader>
-              <CardFooter className="bg-slate-50/50 border-t p-4">
+              <CardFooter className="border-t p-4">
                 <div className="w-full">
                   
                   {/* === THE IMPORT DIALOG COMPONENT === */}
@@ -258,7 +247,7 @@ export function DataManagement() {
                               <div className="bg-blue-50 p-3 rounded-full mb-4">
                                 <FileSpreadsheet className="h-8 w-8 text-slate-400" />
                               </div>
-                              <p className="text-sm font-medium">Click to upload CSV</p>
+                              <p className="text-sm font-medium hover:text-black">Click to upload CSV</p>
                               <input type="file" accept=".csv" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                            </div>
                         )}
@@ -325,53 +314,13 @@ export function DataManagement() {
                   Download a full CSV copy of your member database for safekeeping.
                 </CardDescription>
               </CardHeader>
-              <CardFooter className="bg-slate-50/50 border-t p-4">
+              <CardFooter className="border-t p-4">
                 <div className="w-full">
                   <ExportClientsButton />
                 </div>
               </CardFooter>
             </Card>
           </div>
-        </div>
-
-        {/* --- RIGHT COLUMN: MAINTENANCE --- */}
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-lg font-semibold tracking-tight">Maintenance Zone</h3>
-            <p className="text-sm text-muted-foreground">Manage storage and clean up old records.</p>
-          </div>
-
-          <Card className="border-red-100 shadow-sm">
-            <CardHeader className="pb-3 bg-red-50/30">
-              <CardTitle className="text-base flex items-center gap-2 text-red-900">
-                <ShieldAlert className="h-5 w-5" /> Bulk Delete Inactive
-              </CardTitle>
-              <CardDescription className="text-red-900/70">
-                Identify and remove members who are no longer active to save space.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between text-sm mb-4">
-                <span className="text-muted-foreground">Inactive Members Found:</span>
-                <Badge variant="secondary" className="bg-red-100 text-red-700 hover:bg-red-200">
-                  {stats?.members - stats?.activeMembers} Records
-                </Badge>
-              </div>
-              <Separator className="mb-4"/>
-              <p className="text-xs text-muted-foreground mb-4">
-                Action: This will permanently delete member profiles, attendance history, and payment logs for all users marked "INACTIVE".
-              </p>
-              <Button 
-                variant="destructive" 
-                className="w-full" 
-                onClick={handleCleanup}
-                disabled={cleaning || (stats?.members - stats?.activeMembers === 0)}
-              >
-                {cleaning ? "Cleaning Database..." : "Delete All Inactive Members"}
-                {!cleaning && <Trash2 className="ml-2 h-4 w-4" />}
-              </Button>
-            </CardContent>
-          </Card>
         </div>
 
       </div>
