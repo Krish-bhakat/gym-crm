@@ -1,186 +1,212 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress"; // Install shadcn progress if needed
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useState } from "react";
+import Papa from "papaparse";
 import { 
-  Database, HardDrive, UploadCloud, DownloadCloud, 
-  Trash2, RefreshCw, FileText, AlertTriangle, CheckCircle2 
-} from "lucide-react";
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter 
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { UploadCloud, CheckCircle2, Loader2, FileSpreadsheet, AlertTriangle, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { importMembersWithMap } from "@/app/(dashboard)/dashboard/clients/import-action"; 
 
-// Import your existing actions/components
-import { ImportClientsDialog } from "@/components/import-clients-button";
-import { ExportClientsButton } from "@/components/export-cleints-button";
-import { getDataStats, deleteInactiveMembers } from "@/app/(dashboard)/dashboard/clients/import-action";
+// Match strict backend keys
+const REQUIRED_FIELDS = [
+  { key: 'fullName', label: 'Full Name (Required)', aliases: ['name', 'member', 'student', 'client'], required: true },
+  { key: 'whatsapp', label: 'Phone/WhatsApp', aliases: ['mobile', 'phone', 'contact', 'cell', 'whatsapp'], required: false },
+  { key: 'gender', label: 'Gender (M/F)', aliases: ['sex', 'gender'], required: false },
+  { key: 'biometricId', label: 'Biometric ID', aliases: ['bio', 'id', 'device', 'fingerprint'], required: false },
+  { key: 'email', label: 'Email', aliases: ['mail', 'e-mail'], required: false },
+  { key: 'joinDate', label: 'Joining Date', aliases: ['date', 'joined', 'start', 'created'], required: false },
+];
 
 export function DataManagement() {
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [cleaning, setCleaning] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [csvData, setCsvData] = useState<any[]>([]);
+  const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
-  // Fetch stats on load
-  useEffect(() => {
-    async function load() {
-      const data = await getDataStats();
-      setStats(data);
-      setLoading(false);
-    }
-    load();
-  }, []);
-
-  // Handle Bulk Delete
-  const handleCleanup = async () => {
-    if (!confirm("Are you sure? This will PERMANENTLY delete all members marked as 'INACTIVE'. This cannot be undone.")) return;
-    
-    setCleaning(true);
-    const res = await deleteInactiveMembers();
-    setCleaning(false);
-
-    if (res.success) {
-      toast.success(`Cleanup complete. Removed ${res.count} records.`);
-      // Refresh stats
-      const data = await getDataStats();
-      setStats(data);
-    } else {
-      toast.error("Cleanup failed.");
+  // Reset state when closing dialog
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      setTimeout(() => {
+        setStep(1);
+        setCsvData([]);
+        setMapping({});
+      }, 300);
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-muted-foreground">Loading data stats...</div>;
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadedFile = e.target.files?.[0];
+    if (!uploadedFile) return;
+
+    Papa.parse(uploadedFile, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const headers = results.meta.fields || [];
+        setCsvHeaders(headers);
+        setCsvData(results.data);
+        autoMapColumns(headers);
+        setStep(2);
+      },
+      error: (err: any) => toast.error("CSV Error: " + err.message)
+    });
+    
+    // Reset input so same file can be selected again if needed
+    e.target.value = ""; 
+  };
+
+  const autoMapColumns = (headers: string[]) => {
+    const newMapping: Record<string, string> = {};
+    REQUIRED_FIELDS.forEach((field) => {
+      // Find a header that roughly matches our aliases
+      const match = headers.find(header => 
+        field.aliases.some(alias => header.toLowerCase().includes(alias))
+      );
+      if (match) newMapping[field.key] = match;
+    });
+    setMapping(newMapping);
+  };
+
+  const handleFinalImport = async () => {
+    // Validation: Ensure required fields are mapped
+    const missingRequired = REQUIRED_FIELDS.filter(f => f.required && !mapping[f.key]);
+    if (missingRequired.length > 0) {
+      toast.error(`Please map the following required fields: ${missingRequired.map(f => f.label).join(", ")}`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Send raw data + the mapping guide to the server
+      const result = await importMembersWithMap(csvData, mapping);
+      
+      if (result.success) {
+        toast.success(`Success! Imported ${result.count} members.`);
+        setIsOpen(false);
+        // Force refresh to show new data
+        window.location.reload(); 
+      } else {
+        toast.error(result.error || "Import failed");
+      }
+    } catch (e) {
+      toast.error("Something went wrong during import");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="space-y-6">
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button variant="outline">
+          <UploadCloud className="mr-2 h-4 w-4" /> Import CSV
+        </Button>
+      </DialogTrigger>
       
-      {/* --- SECTION 1: SYSTEM HEALTH --- */}
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* Card 1: Storage Overview */}
-        <Card>
-            <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Database Usage</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold flex items-center gap-2">
-                    {stats?.estimatedSize || "0 KB"}
-                    <Badge variant="outline" className="text-xs font-normal bg-green-50 text-green-700 border-green-200">
-                        Healthy
-                    </Badge>
-                </div>
-                <Progress value={25} className="h-2 mt-3" />
-                <p className="text-xs text-muted-foreground mt-2">Estimated storage load</p>
-            </CardContent>
-        </Card>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Import Members</DialogTitle>
+          <DialogDescription>
+            {step === 1 
+              ? "Upload your member list (CSV format)." 
+              : `Found ${csvData.length} rows. Please map your columns below.`}
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* Card 2: Record Counts */}
-        <Card>
-            <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Records</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">{stats?.members || 0}</div>
-                <div className="flex gap-2 mt-2 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-green-500"/> {stats?.activeMembers} Active</span>
-                    <span className="flex items-center gap-1"><FileText className="h-3 w-3 text-blue-500"/> {stats?.attendanceRecords} Logs</span>
+        <div className="flex-1 overflow-y-auto py-4 px-1">
+          {step === 1 && (
+             <div className="grid place-items-center border-2 border-dashed border-slate-200 rounded-xl p-10 cursor-pointer hover:bg-slate-50 transition-colors relative">
+                <div className="bg-blue-50 p-3 rounded-full mb-4">
+                  <FileSpreadsheet className="h-8 w-8 text-blue-600" />
                 </div>
-            </CardContent>
-        </Card>
+                <p className="text-sm font-medium text-slate-900">Click to browse or drag file here</p>
+                <p className="text-xs text-slate-500 mt-1">Supports .csv files</p>
+                <input 
+                  type="file" 
+                  accept=".csv" 
+                  onChange={handleFileUpload} 
+                  className="absolute inset-0 opacity-0 cursor-pointer" 
+                />
+             </div>
+          )}
 
-        {/* Card 3: System Status */}
-        <Card>
-            <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">System Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="flex items-center gap-2 text-green-600 font-bold text-lg">
-                    <Database className="h-5 w-5" /> Online
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                    Last backup: Auto-managed by Cloud
-                </p>
-            </CardContent>
-        </Card>
-      </div>
+          {step === 2 && (
+            <div className="space-y-5">
+              <Alert className="bg-blue-50 text-blue-800 border-blue-200">
+                <CheckCircle2 className="h-4 w-4" />
+                <AlertTitle>Smart Match Active</AlertTitle>
+                <AlertDescription className="text-xs">
+                  We have auto-selected columns that look similar. Please verify the <b>Full Name</b> field.
+                </AlertDescription>
+              </Alert>
 
-      {/* --- SECTION 2: MIGRATION TOOLS --- */}
-      <Card>
-        <CardHeader>
-            <div className="flex items-center gap-2">
-                <RefreshCw className="h-5 w-5 text-blue-600" />
-                <CardTitle>Migration & Backup</CardTitle>
-            </div>
-            <CardDescription>Move your data in or out of the system.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-6 md:grid-cols-2">
-            
-            {/* Import Area */}
-            <div className="border rounded-xl p-4 flex items-start gap-4 hover:bg-slate-50 transition-colors">
-                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
-                    <UploadCloud className="h-6 w-6" />
-                </div>
-                <div className="space-y-2 w-full">
-                    <h4 className="font-semibold text-sm hover:text-black">Import Members</h4>
-                    <p className="text-xs text-muted-foreground">
-                        Bulk upload new clients via CSV. Ideal for migrating from another software.
-                    </p>
-                    <div className="pt-2">
-                        {/* Wrapper to style the trigger button full width if needed */}
-                        <div className="w-fit">
-                            <ImportClientsDialog />
-                        </div>
+              <div className="grid gap-4">
+                {REQUIRED_FIELDS.map((field) => {
+                  const isMapped = !!mapping[field.key];
+                  return (
+                    <div key={field.key} className="grid grid-cols-12 gap-4 items-center border-b border-slate-100 pb-3 last:border-0">
+                      <div className="col-span-5">
+                        <Label className="text-sm font-medium">
+                          {field.label} {field.required && <span className="text-red-500">*</span>}
+                        </Label>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          Destination Field
+                        </p>
+                      </div>
+                      
+                      <div className="col-span-7">
+                        <Select 
+                          value={mapping[field.key] || "ignore"} 
+                          onValueChange={(val) => setMapping(prev => ({...prev, [field.key]: val === "ignore" ? "" : val}))}
+                        >
+                          <SelectTrigger className={isMapped ? "border-green-500 bg-green-50/50 ring-0 focus:ring-0" : "text-muted-foreground"}>
+                            <SelectValue placeholder="Skip this field" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ignore" className="text-muted-foreground italic">
+                              -- Skip / Do Not Import --
+                            </SelectItem>
+                            {csvHeaders.map(h => (
+                              <SelectItem key={h} value={h} className="font-medium">
+                                {h}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                </div>
+                  );
+                })}
+              </div>
             </div>
-
-            {/* Export Area */}
-            <div className="border rounded-xl p-4 flex items-start gap-4 hover:bg-slate-50 transition-colors">
-                <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
-                    <DownloadCloud className="h-6 w-6" />
-                </div>
-                <div className="space-y-2 w-full">
-                    <h4 className="font-semibold text-sm hover:text-black">Export Data</h4>
-                    <p className="text-xs text-muted-foreground">
-                        Download a complete CSV copy of your member database for offline backup.
-                    </p>
-                    <div className="pt-2">
-                        <ExportClientsButton />
-                    </div>
-                </div>
-            </div>
-
-        </CardContent>
-      </Card>
-
-      {/* --- SECTION 3: DANGER ZONE --- */}
-      <div className="border border-red-200 rounded-xl bg-red-50/50 overflow-hidden">
-        <div className="p-4 border-b border-red-100 bg-red-100/50 flex items-center gap-2 text-red-900">
-            <AlertTriangle className="h-5 w-5" />
-            <span className="font-semibold">Maintenance Zone</span>
+          )}
         </div>
-        <div className="p-6 grid gap-4 md:grid-cols-2 items-center">
-            <div>
-                <h4 className="font-medium text-red-950">Bulk Delete Inactive Members</h4>
-                <p className="text-sm text-red-800/80 mt-1">
-                    This will remove all members who are marked as "INACTIVE". 
-                    Use this to free up space and clean your database.
-                </p>
-            </div>
-            <div className="flex justify-end">
-                <Button 
-                    variant="destructive" 
-                    onClick={handleCleanup} 
-                    disabled={cleaning}
-                    className="bg-red-600 hover:bg-red-700"
-                >
-                    {cleaning ? "Cleaning..." : "Delete Inactive Members"}
-                    <Trash2 className="ml-2 h-4 w-4" />
-                </Button>
-            </div>
-        </div>
-      </div>
 
-    </div>
+        <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t mt-auto">
+          {step === 2 ? (
+            <>
+              <Button variant="ghost" onClick={() => setStep(1)} disabled={loading}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+              <Button onClick={handleFinalImport} disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
+                {loading ? "Importing..." : "Run Import"}
+              </Button>
+            </>
+          ) : (
+             <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
