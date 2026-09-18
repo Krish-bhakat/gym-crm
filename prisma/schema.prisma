@@ -171,6 +171,7 @@ model BiometricDevice {
   name        String   // e.g. "Front Door Scanner"
   serialNo    String?  // Optional hardware serial
   isActive    Boolean  @default(true)
+  lastSeen    DateTime
   
   gymId       Int
   gym         Gym      @relation(fields: [gymId], references: [id])

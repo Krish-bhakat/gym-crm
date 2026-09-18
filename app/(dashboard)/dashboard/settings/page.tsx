@@ -69,7 +69,7 @@ export default async function SettingsPage() {
             <TabsTrigger value="plans" className="w-full justify-start px-3 py-2 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <CreditCard className="mr-2 h-4 w-4" /> Plans
             </TabsTrigger>
-            <TabsTrigger value="data">
+            <TabsTrigger value="data" className="w-full justify-start px-3 py-2 h-10 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <DatabaseBackup className="mr-2 h-4 w-4" />Data Management
             </TabsTrigger>
             {/* 👇 NEW NOTIFICATIONS TAB */}

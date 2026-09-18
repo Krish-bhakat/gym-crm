@@ -62,14 +62,24 @@ export async function handleBiometricData(req: Request) {
     }
 
     // 3. Database Logic: Validate Device
-    const device = await db.biometricDevice.findUnique({
-      where: { id: deviceKey },
+    const device = await db.biometricDevice.findFirst({
+      where: {
+        OR: [
+          { id: deviceKey },
+          { serialNo: deviceKey }
+        ]
+      },
       include: { gym: true }
     });
 
     if (!device || !device.isActive) {
       return new NextResponse("Unauthorized Device", { status: 401 }); 
     }
+
+    await db.biometricDevice.update({
+      where: { id: device.id },
+      data: { lastSeen: new Date() }
+    });
 
     let successCount = 0;
     

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { BiometricDevice } from "@prisma/client";
 import { 
   Trash2, Monitor, AlertCircle, RefreshCw, CheckCircle2 
 } from "lucide-react";
@@ -15,7 +16,7 @@ import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 
 interface BiometricListProps {
-  devices: any[]; // Replace 'any' with your Prisma type if available
+  devices: BiometricDevice[]; // Replace 'any' with your Prisma type if available
 }
 
 export function BiometricList({ devices }: BiometricListProps) {
@@ -81,7 +82,7 @@ export function BiometricList({ devices }: BiometricListProps) {
                 </div>
                 
                 <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground font-mono">
-                    <span>SN: {device.id}</span> {/* Using ID as SN based on previous logic */}
+                    <span>SN: {device.serialNo}</span> {/* Using ID as SN based on previous logic */}
                     {device.lastSeen && (
                         <span>• Last seen {formatDistanceToNow(new Date(device.lastSeen))} ago</span>
                     )}

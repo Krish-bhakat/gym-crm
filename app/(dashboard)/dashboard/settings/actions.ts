@@ -4,7 +4,6 @@ import { db } from "@/lib/db"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
 
-// --- 1. GENERAL SETTINGS ACTION ---
 export async function updateGymProfile(formData: FormData) {
   const session = await auth()
   if (!session?.user?.email) return { error: "Unauthorized" }
@@ -33,8 +32,6 @@ export async function updateGymProfile(formData: FormData) {
   }
 }
 
-// --- 2. CREATE PLAN ACTION ---
-// Add or Update this function
 export async function createPlan(data: { name: string, price: number, duration: number }) {
     const session = await auth();
     if (!session?.user?.gymId) return { success: false };
@@ -90,6 +87,8 @@ export async function createBiometricDevice(name: string, sn:string) {
         name: name,
         gymId: user.gymId,
         isActive: true,
+        serialNo:sn,
+        lastSeen: new Date(),
       }
     })
 

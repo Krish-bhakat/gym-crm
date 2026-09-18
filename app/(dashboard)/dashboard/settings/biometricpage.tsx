@@ -31,6 +31,7 @@ export function BiometricSettings({ devices }: BiometricSettingsProps) {
 
   // 3. Construct the full API path
   const fullUrl = `${origin}/api/biometric/check-in`;
+    const legacyUrl = `${origin}/iclock/cdata`;
   
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -70,9 +71,9 @@ export function BiometricSettings({ devices }: BiometricSettingsProps) {
                     </span>
                     <div className="flex items-center gap-2">
                         <code className="flex-1 p-3 bg-slate-900 rounded border border-slate-800 font-mono text-sm break-all text-blue-300">
-                            {fullUrl}
+                            {legacyUrl}
                         </code>
-                        <Button variant="outline" size="icon" className="border-slate-700 hover:bg-slate-800 hover:text-white" onClick={() => copyToClipboard(fullUrl)}>
+                        <Button variant="outline" size="icon" className="border-slate-700 hover:bg-slate-800 hover:text-white" onClick={() => copyToClipboard(legacyUrl)}>
                             <Copy className="h-4 w-4" />
                         </Button>
                     </div>
